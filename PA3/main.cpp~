@@ -1,0 +1,214 @@
+//
+//PA3
+//Dara Diba ddiba
+//NiravAgrawalnkagrawa
+//
+
+#include <cstdlib>
+#include <exception>
+#include <iostream>
+#include <string>
+#include <unistd.h>
+#include <fstream>
+
+using namespace std;
+
+#include "listmap.h"
+#include "xpair.h"
+#include "util.h"
+
+typedef xpair<string,string> str_str_pair;
+typedef listmap<string,string> str_str_map;
+
+
+void scan_options (int argc, char** argv) {
+
+   opterr = 0;
+   for (;;) {
+      int option = getopt (argc, argv, "@:");
+      if (option == -1) break;
+      switch (option) {
+         case '@':
+            traceflags::setflags (optarg);
+            break;
+         default:
+            complain() << "-" << (char) optopt << ": invalid option"
+                       << endl;
+            break;
+      }
+   }
+}
+
+
+void trim(string *line)
+{
+    size_t found_white_space = line->find_first_of(" ");
+
+    if(found_white_space==0)
+    {
+        size_t i=0;
+        while(line->at(i)==' ')
+        {
+            line->erase(i, 1);
+            i++;
+        }
+    }
+
+    size_t found_equals = line->find_first_of("=");
+
+    if(found_equals==0 && line->size()==1)
+    {
+        //dont do anything if there's just the equal sign.
+    }
+    else if(found_equals!=std::string::npos)
+    {
+        size_t i=found_equals-1;
+        if(i>=0 && found_equals!=0)
+        {
+            while(i>=0 && line->at(i)==' ')
+            {
+                cout << "i=" << i << endl;
+                line->erase(i, 1);
+                if(i-1 < 0)
+                    break;
+                else
+                    --i;
+            }
+        }
+
+
+        i=found_equals+1;
+        if(i<line->size())
+        {
+            while(i<line->size() && line->at(i)==' ')
+            {
+                cout << "i=" << i << endl;
+
+                line->erase(i, 1);
+                if(i+1 >= line->size())
+                    break;
+                else
+                    ++i;
+            }
+        }
+    }
+
+    found_white_space = line->find_last_not_of(" ");
+    if (found_white_space!=std::string::npos)
+        line->erase(found_white_space+1);
+}
+
+int main (int argc, char** argv) {
+    sys_info::set_execname (argv[0]);
+    scan_options (argc, argv);
+    str_str_map *the_map = new str_str_map();
+    for (int argi = 1; argi < argc; ++argi)
+    {
+
+        string line;
+        ifstream myfile;
+
+        string filename = argv[argi];
+
+        myfile.open(filename);
+
+        if (myfile.is_open())
+        {
+            int line_num = 0;
+
+            while ( getline (myfile,line) )
+            {
+                line_num++;
+                cout << filename << ": " << line_num
+                    << ": " << line << endl;
+
+                if(line[0]=='#' || line.size() == 0)
+                    continue;
+
+                trim(&line);
+
+                if(line.size() == 0)
+                    continue;
+
+                if(line[0]=='=' && line.size()==1 && !the_map->empty())
+                {
+                    for(auto itor = the_map->begin();
+                            itor!=the_map->end();++itor)
+                    {
+                        cout << itor->first << " = "
+                                    << itor->second << endl;
+                    }
+                    continue;
+                }
+
+                if(line[0] == '=' && line.size()>1
+                                    && !the_map->empty())
+                {
+                    string value = line.substr(1);
+                    for(auto itor = the_map->begin();
+                                    itor!=the_map->end();++itor)
+                    {
+                        if (value == itor->second)
+                            cout << itor->first << " = " <<
+                                                itor->second << endl;
+                    }
+                    continue;
+                }
+
+                size_t found = line.find_first_of("=");
+
+                if(found == std::string::npos && !the_map->empty())
+                {
+                    auto itor=the_map->find(line);
+                    if(line == itor->first)
+                        cout << itor->first << " = " << itor->second
+                                                            << endl;
+                    else
+                        cout << line << ": key not found" << endl;
+
+                    continue;
+                }
+
+                if(found == std::string::npos && the_map->empty())
+                {
+                    cout << line << ": key not found" << endl;
+                    continue;
+                }
+
+
+                string key = line.substr(0,found);
+
+                if(found == line.size()-1 && key != ""
+                                    && !the_map->empty())
+                {
+                    auto itor=the_map->find(key);
+                    if(key == itor->first)
+                        itor.erase();
+                    else
+                        cout << key << ": key not found" << endl;
+
+                    continue;
+                }
+
+
+                string value = line.substr(found+1);
+
+                str_str_pair *insert_pair =
+                                        new str_str_pair(key, value);
+                the_map->insert (*insert_pair);
+
+            }
+
+            myfile.close();
+      }
+      else
+      {
+            cout << "Unable to open file" << endl;
+            return EXIT_FAILURE;
+      }
+
+   }
+
+   return EXIT_SUCCESS;
+}
+
